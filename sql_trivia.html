@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL Trivia</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #222222;
+    --border: #2e2e2e;
+    --text: #e8e8e8;
+    --muted: #666;
+    --accent: #00d4a0;
+    --accent-dim: rgba(0,212,160,0.12);
+    --wrong: #ff4d6d;
+    --wrong-dim: rgba(255,77,109,0.12);
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .shell {
+    width: 100%;
+    max-width: 720px;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1.25rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .score-bar {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .score-bar span { color: var(--text); }
+
+  /* category select screen */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .cat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 1rem;
+  }
+
+  .cat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    text-align: left;
+  }
+
+  .cat-card:hover {
+    border-color: var(--accent);
+    background: var(--surface2);
+  }
+
+  .cat-card.selected {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  .cat-icon {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+  }
+
+  .cat-name {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .cat-count {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+
+  .cat-all {
+    grid-column: 1 / -1;
+    background: var(--accent-dim);
+    border-color: var(--accent);
+  }
+
+  .btn-start {
+    margin-top: 2rem;
+    width: 100%;
+    padding: 0.875rem;
+    background: var(--accent);
+    color: #000;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .btn-start:hover { opacity: 0.88; }
+  .btn-start:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .screen-title {
+    font-size: 22px;
+    font-weight: 500;
+    margin-bottom: 6px;
+  }
+
+  .screen-sub {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+  }
+
+  /* quiz screen */
+  .progress-track {
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-bottom: 2rem;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+
+  .q-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .q-cat-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--accent-dim);
+    padding: 3px 10px;
+    border-radius: 4px;
+  }
+
+  .q-num {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .question-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+    min-height: 100px;
+    display: flex;
+    align-items: center;
+  }
+
+  .question-text {
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  .options {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+
+  .opt {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.875rem 1rem;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    transition: border-color 0.12s, background 0.12s;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text);
+    font-family: var(--sans);
+  }
+
+  .opt:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: var(--surface2);
+  }
+
+  .opt:disabled { cursor: default; }
+
+  .opt-letter {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 18px;
+    padding-top: 2px;
+    letter-spacing: 0.04em;
+  }
+
+  .opt.correct {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  .opt.correct .opt-letter { color: var(--accent); }
+
+  .opt.wrong {
+    border-color: var(--wrong);
+    background: var(--wrong-dim);
+  }
+
+  .opt.wrong .opt-letter { color: var(--wrong); }
+
+  .feedback-box {
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    font-size: 14px;
+    line-height: 1.6;
+    display: none;
+  }
+
+  .feedback-box.correct {
+    background: var(--accent-dim);
+    border: 1px solid rgba(0,212,160,0.25);
+    color: #a8f0dc;
+    display: block;
+  }
+
+  .feedback-box.wrong {
+    background: var(--wrong-dim);
+    border: 1px solid rgba(255,77,109,0.25);
+    color: #ffb3c1;
+    display: block;
+  }
+
+  .feedback-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .btn-next {
+    width: 100%;
+    padding: 0.875rem;
+    background: transparent;
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: none;
+  }
+
+  .btn-next:hover { background: var(--accent-dim); }
+  .btn-next.visible { display: block; }
+
+  /* results screen */
+  .result-hero {
+    text-align: center;
+    padding: 3rem 0 2rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2rem;
+  }
+
+  .result-score {
+    font-family: var(--mono);
+    font-size: 64px;
+    font-weight: 500;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .result-label {
+    font-size: 14px;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+
+  .result-grade {
+    font-size: 18px;
+    font-weight: 500;
+    margin-top: 1.5rem;
+    color: var(--text);
+  }
+
+  .breakdown {
+    margin-bottom: 2rem;
+  }
+
+  .breakdown-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+
+  .breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+
+  .breakdown-row:last-child { border-bottom: none; }
+
+  .br-cat { color: var(--text); }
+
+  .br-stat {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .br-pct {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    min-width: 40px;
+    text-align: right;
+  }
+
+  .result-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .btn-outline {
+    padding: 0.875rem;
+    background: transparent;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+  .streak-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #f59e0b;
+    background: rgba(245,158,11,0.12);
+    border: 1px solid rgba(245,158,11,0.25);
+    padding: 4px 10px;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+  }
+
+  code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: rgba(255,255,255,0.06);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  @media (max-width: 520px) {
+    .cat-grid { grid-template-columns: 1fr; }
+    .cat-all { grid-column: 1; }
+    .result-btns { grid-template-columns: 1fr; }
+    .result-score { font-size: 48px; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header>
+    <span class="logo">SQL Trivia</span>
+    <span class="score-bar" id="hdr-score" style="display:none">score <span id="hdr-s">0</span> / <span id="hdr-t">0</span></span>
+  </header>
+
+  <!-- CATEGORY SELECT -->
+  <div class="screen active" id="screen-cat">
+    <div class="screen-title">Choose a category</div>
+    <div class="screen-sub">Select one or mix them all together</div>
+    <div class="cat-grid" id="cat-grid"></div>
+    <button class="btn-start" id="btn-start" disabled onclick="startQuiz()">Start quiz</button>
+  </div>
+
+  <!-- QUIZ -->
+  <div class="screen" id="screen-quiz">
+    <div class="progress-track"><div class="progress-fill" id="prog"></div></div>
+    <div class="q-meta">
+      <span class="q-cat-tag" id="q-cat"></span>
+      <span class="q-num" id="q-num"></span>
+    </div>
+    <div class="question-box"><div class="question-text" id="q-text"></div></div>
+    <div class="options" id="opts"></div>
+    <div class="feedback-box" id="feedback">
+      <span class="feedback-label" id="fb-label"></span>
+      <span id="fb-text"></span>
+    </div>
+    <button class="btn-next" id="btn-next" onclick="nextQ()">Next question →</button>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="screen" id="screen-result">
+    <div class="result-hero">
+      <div class="result-score" id="r-score"></div>
+      <div class="result-label" id="r-frac"></div>
+      <div class="result-grade" id="r-grade"></div>
+    </div>
+    <div class="breakdown">
+      <div class="breakdown-title">by category</div>
+      <div id="r-breakdown"></div>
+    </div>
+    <div class="result-btns">
+      <button class="btn-outline" onclick="retryWrong()">Retry wrong answers</button>
+      <button class="btn-outline" onclick="goHome()">New quiz</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const CATS = {
+  syntax:    { label: "SQL syntax",      tag: "SYN",  desc: "SELECT, WHERE, JOIN, GROUP BY..." },
+  ddl:       { label: "DDL commands",    tag: "DDL",  desc: "CREATE, ALTER, DROP, TRUNCATE..." },
+  types:     { label: "Data types",      tag: "TYPE", desc: "INT, VARCHAR, DATE, BOOLEAN..." },
+  jargon:    { label: "Jargon & concepts",tag: "JRGN",desc: "Dimensions, facts, indexes, ACID..." },
+};
+
+const ALL_QUESTIONS = [
+  {cat:"syntax", q:"What does <code>SELECT *</code> return?", correct:"Every column and every row from the table", wrong:["Only the first column of every row","The count of all rows","Only rows where all fields have values"]},
+  {cat:"syntax", q:"What keyword removes duplicate rows from a result set?", correct:"DISTINCT", wrong:["UNIQUE","NODUPE","SINGLE"]},
+  {cat:"syntax", q:"What does the <code>AS</code> keyword do in a SELECT statement?", correct:"Gives a column or table a temporary alias name in the output", wrong:["Filters rows matching a condition","Sorts the results alphabetically","Creates a permanent column rename in the table"]},
+  {cat:"syntax", q:"What is the correct order of SQL clauses?", correct:"SELECT → FROM → WHERE → GROUP BY → HAVING → ORDER BY", wrong:["FROM → WHERE → SELECT → GROUP BY → ORDER BY","SELECT → WHERE → FROM → ORDER BY → GROUP BY","WHERE → SELECT → FROM → HAVING → ORDER BY"]},
+  {cat:"syntax", q:"Which clause filters rows before aggregation?", correct:"WHERE", wrong:["HAVING","FILTER","LIMIT"]},
+  {cat:"syntax", q:"Which clause filters groups after aggregation?", correct:"HAVING", wrong:["WHERE","GROUP FILTER","AFTER"]},
+  {cat:"syntax", q:"What does <code>ORDER BY column DESC</code> do?", correct:"Sorts results from largest to smallest (or newest to oldest)", wrong:["Sorts alphabetically from A to Z","Removes duplicate values then sorts","Sorts by the column in a separate output"]},
+  {cat:"syntax", q:"What does <code>LIMIT 10 OFFSET 20</code> return?", correct:"10 rows starting from row 21", wrong:["The first 20 rows","Rows 1 through 10 only","10 rows at random from the table"]},
+  {cat:"syntax", q:"What does an INNER JOIN return?", correct:"Only rows where the join condition matches in both tables", wrong:["All rows from the left table plus matched rows from the right","Every combination of rows from both tables","All rows from both tables, NULLs where no match"]},
+  {cat:"syntax", q:"What does a LEFT JOIN return that an INNER JOIN does not?", correct:"Rows from the left table that have no match in the right table (with NULLs)", wrong:["Duplicate rows from both tables","All rows from the right table with NULLs","Rows sorted by the left table's primary key"]},
+  {cat:"syntax", q:"What is a CROSS JOIN?", correct:"Every combination of rows from both tables — a cartesian product", wrong:["Rows that appear in one table but not the other","Rows where two columns share the same value","A join that crosses two databases"]},
+  {cat:"syntax", q:"What is the difference between <code>COUNT(*)</code> and <code>COUNT(column)</code>?", correct:"COUNT(*) counts all rows; COUNT(column) only counts rows where that column is not NULL", wrong:["COUNT(*) is faster but COUNT(column) is more accurate","They are identical in all databases","COUNT(*) counts columns; COUNT(column) counts rows"]},
+  {cat:"syntax", q:"What does <code>GROUP BY country</code> do?", correct:"Groups all rows with the same country value together so aggregates apply per country", wrong:["Sorts results alphabetically by country","Filters to show only one country","Returns only countries that appear more than once"]},
+  {cat:"syntax", q:"What does <code>COALESCE(a, b, c)</code> return?", correct:"The first non-NULL value among a, b, and c", wrong:["The average of a, b, and c","A combined string of all three values","NULL if any of the values are NULL"]},
+  {cat:"syntax", q:"What do the two wildcards in LIKE do — <code>%</code> and <code>_</code>?", correct:"% matches any number of characters; _ matches exactly one character", wrong:["% matches one character; _ matches any number","% matches digits only; _ matches letters only","Both match any single character"]},
+  {cat:"syntax", q:"What does a CASE expression do in SQL?", correct:"Provides inline conditional logic — like an if-else inside a query", wrong:["Converts data to uppercase","Switches between two database connections","Groups rows by a conditional value"]},
+  {cat:"syntax", q:"What does arithmetic with NULL always produce?", correct:"NULL — it propagates through every arithmetic operation", wrong:["Zero","An error","The non-NULL value in the expression"]},
+  {cat:"syntax", q:"How do you check if a column value is NULL?", correct:"IS NULL — e.g. WHERE email IS NULL", wrong:["= NULL","== NULL","ISNULL()"]},
+  {cat:"syntax", q:"What does <code>BETWEEN 10 AND 50</code> include?", correct:"All values from 10 to 50, inclusive on both ends", wrong:["Values from 11 to 49 only","Values strictly greater than 10 and less than 50","Only the values 10 and 50 themselves"]},
+  {cat:"syntax", q:"What does the <code>IN</code> operator do?", correct:"Matches a column value against a list of values — cleaner than multiple OR conditions", wrong:["Checks if a value falls within a numeric range","Joins two tables together","Inserts a new row into a table"]},
+
+  {cat:"ddl", q:"What does <code>ALTER TABLE</code> do?", correct:"Modifies an existing table structure — add, drop, or change columns and constraints", wrong:["Deletes all rows in a table","Renames a database","Copies a table to a new schema"]},
+  {cat:"ddl", q:"What is the difference between DROP TABLE and TRUNCATE?", correct:"DROP removes the table entirely; TRUNCATE removes all rows but keeps the empty table", wrong:["They are identical — both delete everything","DROP only deletes indexes; TRUNCATE deletes rows","TRUNCATE removes the table; DROP removes only rows"]},
+  {cat:"ddl", q:"What does <code>CREATE INDEX</code> do?", correct:"Creates a data structure on a column to speed up queries that filter or sort by it", wrong:["Adds a new column to a table","Creates a backup of the table","Enforces that all values in the column are unique"]},
+  {cat:"ddl", q:"What does a PRIMARY KEY constraint enforce?", correct:"Every value must be unique and not NULL — uniquely identifies each row", wrong:["The column must reference another table's primary key","Values must fall within a numeric range","The column is automatically filled with a timestamp"]},
+  {cat:"ddl", q:"What does a FOREIGN KEY constraint do?", correct:"Enforces that a column's value must exist in the referenced table's primary key", wrong:["Prevents duplicate values within the same table","Creates an automatic index on the column","Requires the column to be of type INTEGER"]},
+  {cat:"ddl", q:"What does a NOT NULL constraint do?", correct:"Prevents NULL values — every row must supply a value for that column", wrong:["Ensures all values in the column are unique","Sets a default value if none is provided","Makes the column invisible to SELECT *"]},
+  {cat:"ddl", q:"What does a DEFAULT constraint do?", correct:"Automatically uses a specified value when no value is provided in an INSERT", wrong:["Sets the minimum allowed value for the column","Forces the column to be the first in the table","Prevents the column from being updated after INSERT"]},
+  {cat:"ddl", q:"What does COMMIT do in a transaction?", correct:"Permanently saves all changes in the current transaction to the database", wrong:["Undoes all changes since the last COMMIT","Locks the table for other users","Creates a snapshot backup of the current state"]},
+  {cat:"ddl", q:"What does ROLLBACK do?", correct:"Undoes all changes in the current transaction back to the last COMMIT", wrong:["Permanently saves the transaction changes","Restores a table from a backup file","Reverts the last CREATE TABLE statement"]},
+  {cat:"ddl", q:"What does DESCRIBE (or DESC) do on a table?", correct:"Shows the table structure — column names, data types, NULL rules, and defaults", wrong:["Returns the first 10 rows of the table","Shows which indexes exist on the table","Counts the number of rows in the table"]},
+  {cat:"ddl", q:"What does <code>DELETE FROM users WHERE id = 5</code> do differently from TRUNCATE?", correct:"DELETE removes only matching rows and can be rolled back; TRUNCATE removes all rows and is typically not rollbackable", wrong:["DELETE is faster than TRUNCATE","They behave identically except for the WHERE clause syntax","TRUNCATE requires a WHERE clause; DELETE does not"]},
+  {cat:"ddl", q:"What does a CHECK constraint do?", correct:"Enforces a condition on column values — rows violating it are rejected", wrong:["Verifies the table exists before querying","Checks whether an index is being used","Scans for NULL values and reports them"]},
+  {cat:"ddl", q:"What happens if you run <code>UPDATE users SET status = 'active'</code> with no WHERE clause?", correct:"Every row in the table is updated to status = 'active'", wrong:["The query fails with an error","Only the first row is updated","Only rows where status is currently NULL are updated"]},
+  {cat:"ddl", q:"What is the purpose of <code>BEGIN</code> (or START TRANSACTION)?", correct:"Starts a transaction block — all changes are pending until COMMIT or ROLLBACK", wrong:["Creates a new table","Opens a database connection","Begins a loop in a stored procedure"]},
+  {cat:"ddl", q:"What does <code>DROP COLUMN</code> do?", correct:"Permanently removes a column and all its data from the table", wrong:["Hides the column from SELECT * results","Sets all values in the column to NULL","Creates a backup copy of the column before deletion"]},
+
+  {cat:"types", q:"What is the difference between INT and BIGINT?", correct:"INT holds up to ~2.1 billion; BIGINT holds up to ~9.2 quintillion", wrong:["BIGINT allows decimal places; INT does not","They are the same — BIGINT is just an alias","INT is for positive numbers only; BIGINT allows negatives"]},
+  {cat:"types", q:"What data type should you use to store monetary values?", correct:"DECIMAL (or NUMERIC) — stores exact fixed-point numbers with no rounding errors", wrong:["FLOAT — it handles decimals natively","DOUBLE — highest precision","MONEY — a built-in currency type in all databases"]},
+  {cat:"types", q:"What is the difference between FLOAT and DECIMAL?", correct:"DECIMAL is exact; FLOAT is approximate and can introduce tiny rounding errors", wrong:["FLOAT is always more precise than DECIMAL","DECIMAL stores integers; FLOAT stores decimals","They store the same precision but FLOAT uses less storage"]},
+  {cat:"types", q:"What is the difference between VARCHAR and CHAR?", correct:"VARCHAR stores variable-length strings using only what's needed; CHAR always uses the full defined length", wrong:["CHAR allows unicode; VARCHAR is ASCII only","VARCHAR has a max of 255 characters; CHAR has no limit","They are identical in modern databases"]},
+  {cat:"types", q:"When should you use TEXT instead of VARCHAR?", correct:"When storing long freeform content with no predictable length limit — e.g. blog posts, comments", wrong:["When you need to index the column for fast search","When storing values shorter than 255 characters","When the column must be used as a PRIMARY KEY"]},
+  {cat:"types", q:"What does the BOOLEAN data type store?", correct:"True or false values — stored as TINYINT(1) in MySQL (1=true, 0=false) or a native type in PostgreSQL", wrong:["Any integer between 0 and 1","A binary file or image","A string value of 'TRUE' or 'FALSE'"]},
+  {cat:"types", q:"What is the difference between DATE and DATETIME?", correct:"DATE stores only the calendar date; DATETIME stores both date and time", wrong:["DATE includes timezone; DATETIME does not","They are identical — DATETIME is just more verbose","DATE stores Unix timestamps; DATETIME stores formatted strings"]},
+  {cat:"types", q:"What is the key difference between DATETIME and TIMESTAMP?", correct:"TIMESTAMP is often timezone-aware and stored as UTC; DATETIME stores the literal value with no conversion", wrong:["TIMESTAMP is more precise than DATETIME","DATETIME supports timezone offsets; TIMESTAMP does not","They are identical in all databases"]},
+  {cat:"types", q:"What is a UUID and when is it used as a primary key?", correct:"A 128-bit unique identifier used in distributed systems where sequential integers would cause collisions", wrong:["A compressed integer type that saves storage","A type that auto-increments like SERIAL","A string that stores a URL or identifier path"]},
+  {cat:"types", q:"What does SERIAL (or AUTO_INCREMENT) do?", correct:"Automatically assigns the next available integer value on each INSERT — used for primary keys", wrong:["Stores a series of values in a single column","Validates that the column value is always sequential","Creates an index automatically on the column"]},
+  {cat:"types", q:"What is the BLOB data type used for?", correct:"Storing raw binary data like images or files — not text", wrong:["Large text content like blog posts","A very large integer with no fixed size limit","An encrypted string with a fixed 256-byte length"]},
+  {cat:"types", q:"What is the ENUM type and which databases support it natively?", correct:"A column restricted to a predefined list of values — MySQL supports it natively; PostgreSQL uses CHECK or custom types", wrong:["A type that stores key-value pairs — supported by all databases","An auto-incrementing list of labels — PostgreSQL only","A type that stores up to 8 boolean flags in one byte — MySQL only"]},
+  {cat:"types", q:"What is SMALLINT used for?", correct:"Small whole numbers — range -32,768 to 32,767 — saves storage when values are always small", wrong:["Decimals with up to 2 decimal places","Integers with a maximum value of 100","Negative integers only"]},
+  {cat:"types", q:"What does the JSON (or JSONB) data type store?", correct:"JSON data — structured but flexible nested data without a fixed schema", wrong:["Java object references","Compressed binary integers","A list of foreign keys to another table"]},
+
+  {cat:"jargon", q:"What is the difference between a dimension and a metric?", correct:"A dimension is a descriptive attribute used to group/filter data; a metric is a numeric value that can be aggregated", wrong:["A dimension is a number; a metric is a category","They mean the same thing in modern analytics","A dimension is calculated; a metric is stored directly"]},
+  {cat:"jargon", q:"What is a fact table?", correct:"The central table in a data warehouse that stores measurable events or transactions with foreign keys to dimension tables", wrong:["A table that stores lookup values like country codes","A table that contains only true/false facts about entities","A normalised table that avoids all data redundancy"]},
+  {cat:"jargon", q:"What is a star schema?", correct:"A data warehouse design with one central fact table surrounded by denormalised dimension tables", wrong:["A schema where every table references every other table","A fully normalised database design used in OLTP systems","A schema with multiple fact tables connected in a ring"]},
+  {cat:"jargon", q:"What is the difference between normalisation and denormalisation?", correct:"Normalisation reduces redundancy by splitting data into tables; denormalisation combines tables to improve read performance", wrong:["Normalisation speeds up reads; denormalisation speeds up writes","They are opposite names for the same process","Normalisation applies to NoSQL; denormalisation is for SQL"]},
+  {cat:"jargon", q:"What is an index in a database?", correct:"A separate data structure that speeds up row lookups on a column by avoiding a full table scan", wrong:["A list of all tables in the database","A constraint that enforces unique values","A compressed copy of the entire table"]},
+  {cat:"jargon", q:"What is a view?", correct:"A saved SELECT query stored as a virtual table — it does not store data itself, it re-runs the query each time", wrong:["A physical copy of a table stored for fast access","A read-only backup of a table at a point in time","A table that is hidden from non-admin users"]},
+  {cat:"jargon", q:"What is a materialised view?", correct:"A view whose result set is physically stored and periodically refreshed — faster to query but can be stale", wrong:["A view that can be updated like a regular table","A view that is stored in memory only, never on disk","A view that automatically refreshes on every SELECT"]},
+  {cat:"jargon", q:"What is a CTE (Common Table Expression)?", correct:"A named temporary result set defined with WITH at the start of a query — makes complex queries readable", wrong:["A stored procedure that runs on a schedule","A permanent table created for temporary use only","A type of index that spans multiple tables"]},
+  {cat:"jargon", q:"What is a window function?", correct:"A function that calculates across rows related to the current row without collapsing them — e.g. RANK(), LAG()", wrong:["A function that applies only to the first and last rows of a result","A function that creates a sliding time window for caching","A function limited to date and time calculations"]},
+  {cat:"jargon", q:"What does ACID stand for?", correct:"Atomicity, Consistency, Isolation, Durability — the four properties of reliable database transactions", wrong:["Aggregation, Concurrency, Integrity, Distribution","Access, Creation, Indexing, Deletion","Authentication, Compression, Integrity, Durability"]},
+  {cat:"jargon", q:"What is cardinality in a database column?", correct:"The number of unique values in the column — high cardinality means many distinct values, low means few", wrong:["The total number of rows in the table","The maximum allowed length of values in the column","The number of indexes that reference the column"]},
+  {cat:"jargon", q:"What is ETL?", correct:"Extract, Transform, Load — pull data from sources, reshape it, then load it into a destination", wrong:["Encrypt, Transfer, Log — a security pipeline pattern","Execute, Test, Launch — a deployment workflow","Export, Truncate, Link — a migration strategy"]},
+  {cat:"jargon", q:"What is the difference between a data warehouse and a data lake?", correct:"A warehouse stores structured, processed data optimised for queries; a lake stores raw data in any format with schema applied on read", wrong:["A warehouse is on-premise; a lake is always cloud-based","They are different names for the same concept","A lake is for structured data; a warehouse stores raw files"]},
+  {cat:"jargon", q:"What is a surrogate key?", correct:"An artificial primary key with no business meaning — typically an auto-incrementing integer or UUID", wrong:["A secondary key that points to the primary key","A key shared between two tables in a many-to-many relationship","A human-readable identifier like an email address"]},
+  {cat:"jargon", q:"What is a slowly changing dimension (SCD)?", correct:"A dimension record that changes over time — Type 1 overwrites, Type 2 adds a new row to preserve history", wrong:["A dimension table that is updated once per year only","A column that decreases in value over time","A table with fewer than 1,000 rows that rarely needs updating"]},
+  {cat:"jargon", q:"What is data lineage?", correct:"The record of where data came from, how it was transformed, and where it flows through a system", wrong:["The order in which tables were created in a database","A list of all queries run against a dataset","The family of data types used in a schema"]},
+  {cat:"jargon", q:"What is a DAG in the context of data pipelines?", correct:"Directed Acyclic Graph — a structure showing task dependencies where execution flows in one direction with no circular loops", wrong:["Database Administration Guide — a documentation format","Data Aggregation Gateway — a caching layer","Dynamic Async Generator — a streaming data pattern"]},
+];
+
+let selectedCats = new Set();
+let quizQuestions = [];
+let current = 0;
+let score = 0;
+let answered = false;
+let catStats = {};
+let wrongAnswers = [];
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function buildCatGrid() {
+  const grid = document.getElementById('cat-grid');
+  const allCard = document.createElement('div');
+  allCard.className = 'cat-card cat-all';
+  allCard.id = 'cat-all';
+  allCard.onclick = () => toggleAll();
+  const total = ALL_QUESTIONS.length;
+  allCard.innerHTML = `<div class="cat-icon">ALL</div><div class="cat-name">Everything</div><div class="cat-count">${total} questions across all categories</div>`;
+  grid.appendChild(allCard);
+
+  Object.entries(CATS).forEach(([key, cat]) => {
+    const count = ALL_QUESTIONS.filter(q => q.cat === key).length;
+    const card = document.createElement('div');
+    card.className = 'cat-card';
+    card.id = 'cat-' + key;
+    card.onclick = () => toggleCat(key);
+    card.innerHTML = `<div class="cat-icon">${cat.tag}</div><div class="cat-name">${cat.label}</div><div class="cat-count">${count} questions &mdash; ${cat.desc}</div>`;
+    grid.appendChild(card);
+  });
+}
+
+function toggleAll() {
+  const allSelected = Object.keys(CATS).every(k => selectedCats.has(k));
+  if (allSelected) {
+    selectedCats.clear();
+    document.getElementById('cat-all').classList.remove('selected');
+    Object.keys(CATS).forEach(k => document.getElementById('cat-'+k).classList.remove('selected'));
+  } else {
+    Object.keys(CATS).forEach(k => { selectedCats.add(k); document.getElementById('cat-'+k).classList.add('selected'); });
+    document.getElementById('cat-all').classList.add('selected');
+  }
+  updateStart();
+}
+
+function toggleCat(key) {
+  if (selectedCats.has(key)) {
+    selectedCats.delete(key);
+    document.getElementById('cat-'+key).classList.remove('selected');
+    document.getElementById('cat-all').classList.remove('selected');
+  } else {
+    selectedCats.add(key);
+    document.getElementById('cat-'+key).classList.add('selected');
+    if (Object.keys(CATS).every(k => selectedCats.has(k))) {
+      document.getElementById('cat-all').classList.add('selected');
+    }
+  }
+  updateStart();
+}
+
+function updateStart() {
+  document.getElementById('btn-start').disabled = selectedCats.size === 0;
+}
+
+function startQuiz(pool) {
+  const questions = pool || ALL_QUESTIONS.filter(q => selectedCats.has(q.cat));
+  quizQuestions = shuffle([...questions]);
+  current = 0; score = 0; answered = false; catStats = {}; wrongAnswers = [];
+  Object.keys(CATS).forEach(k => { catStats[k] = { correct: 0, total: 0 }; });
+  showScreen('screen-quiz');
+  document.getElementById('hdr-score').style.display = 'block';
+  renderQ();
+}
+
+function renderQ() {
+  const q = quizQuestions[current];
+  const total = quizQuestions.length;
+  document.getElementById('prog').style.width = Math.round((current / total) * 100) + '%';
+  document.getElementById('q-cat').textContent = CATS[q.cat].label;
+  document.getElementById('q-num').textContent = (current + 1) + ' / ' + total;
+  document.getElementById('q-text').innerHTML = q.q;
+  document.getElementById('hdr-s').textContent = score;
+  document.getElementById('hdr-t').textContent = current;
+  document.getElementById('feedback').className = 'feedback-box';
+  document.getElementById('btn-next').classList.remove('visible');
+  answered = false;
+
+  const opts = document.getElementById('opts');
+  opts.innerHTML = '';
+  const choices = shuffle([q.correct, ...q.wrong]);
+  const letters = ['A', 'B', 'C', 'D'];
+  choices.forEach((choice, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt';
+    btn.innerHTML = `<span class="opt-letter">${letters[i]}</span><span>${choice}</span>`;
+    btn.onclick = () => selectAnswer(choice, q.correct, q);
+    opts.appendChild(btn);
+  });
+}
+
+function selectAnswer(chosen, correct, q) {
+  if (answered) return;
+  answered = true;
+  const isCorrect = chosen === correct;
+  if (isCorrect) { score++; catStats[q.cat].correct++; }
+  else { wrongAnswers.push(q); }
+  catStats[q.cat].total++;
+
+  document.querySelectorAll('.opt').forEach(btn => {
+    btn.disabled = true;
+    const text = btn.querySelector('span:last-child').textContent;
+    if (text === correct) btn.classList.add('correct');
+    else if (text === chosen && !isCorrect) btn.classList.add('wrong');
+  });
+
+  const fb = document.getElementById('feedback');
+  const label = document.getElementById('fb-label');
+  const txt = document.getElementById('fb-text');
+  if (isCorrect) {
+    fb.className = 'feedback-box correct';
+    label.textContent = 'Correct';
+    txt.textContent = 'Well done.';
+  } else {
+    fb.className = 'feedback-box wrong';
+    label.textContent = 'Incorrect';
+    txt.innerHTML = 'The correct answer is: ' + correct;
+  }
+
+  document.getElementById('hdr-s').textContent = score;
+  document.getElementById('hdr-t').textContent = current + 1;
+  document.getElementById('btn-next').classList.add('visible');
+  document.getElementById('btn-next').textContent = current + 1 < quizQuestions.length ? 'Next question →' : 'See results →';
+}
+
+function nextQ() {
+  current++;
+  if (current >= quizQuestions.length) { showResults(); return; }
+  renderQ();
+}
+
+function showResults() {
+  showScreen('screen-result');
+  document.getElementById('hdr-score').style.display = 'none';
+  const total = quizQuestions.length;
+  const pct = Math.round((score / total) * 100);
+  document.getElementById('r-score').textContent = pct + '%';
+  document.getElementById('r-frac').textContent = score + ' correct out of ' + total;
+
+  const grades = [[90,'Excellent — solid SQL fundamentals.'],[70,'Good — a few gaps to revisit.'],[50,'Getting there — keep drilling.'],[0,'Keep studying — you\'ll get there.']];
+  const grade = grades.find(g => pct >= g[0]);
+  document.getElementById('r-grade').textContent = grade[1];
+
+  const bd = document.getElementById('r-breakdown');
+  bd.innerHTML = '';
+  Object.entries(catStats).forEach(([key, stat]) => {
+    if (stat.total === 0) return;
+    const p = Math.round((stat.correct / stat.total) * 100);
+    const row = document.createElement('div');
+    row.className = 'breakdown-row';
+    row.innerHTML = `<span class="br-cat">${CATS[key].label}</span><span class="br-stat">${stat.correct}/${stat.total}</span><span class="br-pct">${p}%</span>`;
+    bd.appendChild(row);
+  });
+}
+
+function retryWrong() {
+  if (!wrongAnswers.length) { goHome(); return; }
+  startQuiz(wrongAnswers);
+}
+
+function goHome() {
+  selectedCats.clear();
+  document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('selected'));
+  updateStart();
+  showScreen('screen-cat');
+  document.getElementById('hdr-score').style.display = 'none';
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+buildCatGrid();
+</script>
+</body>
+</html>
